@@ -322,7 +322,7 @@ namespace OCalcProPlugin
                         }
                         else
                         {
-                            pole_dataGridView.Rows[0].Cells["SetDepth"].Style.BackColor = Color.Green;
+                            pole_dataGridView.Rows[0].Cells["SetDepth"].Style.BackColor = Color.White;
                         }
                     }
                 };
@@ -352,8 +352,7 @@ namespace OCalcProPlugin
 
                 cPPLMain.BeforeEvent += (object sender, PPL_Lib.PPLMain.EVENT_TYPE pEventType, ref bool pAbortEvent) =>
                 {
-                    //Console.Clear();
-                    Console.WriteLine(pEventType);
+                    //Console.WriteLine("BeforeEvent: " + pEventType.ToString());
 
                     if (pEventType == PPLMain.EVENT_TYPE.REBUILD_3D)
                     {
@@ -388,8 +387,30 @@ namespace OCalcProPlugin
                             }
                         }
                     };
+
+                    if (pEventType == PPLMain.EVENT_TYPE.REBUILD_ALL_DISPLAYS)
+                    {
+                        //cPPLMain.c3DView.NeutralCameraPosition();
+                        //cPPLMain.c3DView.pole3Dview1.cCameraManager.UpdateCamera();
+                    }
+
+                    if (pEventType == PPLMain.EVENT_TYPE.LD_SELECT_POLE)
+                    {
+                        // Triggers on pole select in 3d view only.
+                    }
+
+                    if (pEventType == PPLMain.EVENT_TYPE.SUBSTITUTION)
+                    {
+                        
+                    }
                 };
+
+                
             }
+
+            [DllImport("kernel32.dll", SetLastError = true)]
+            [return: MarshalAs(UnmanagedType.Bool)]
+            static extern bool AllocConsole();
 
             public Guid cGuid;
             protected override string GetPersistString()
@@ -489,9 +510,5 @@ namespace OCalcProPlugin
                 PPLMessageBox.Show(ex.Message, "Error in " + Name);
             }
         }
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        static extern bool AllocConsole();
     }
 }
