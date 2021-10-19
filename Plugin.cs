@@ -16,6 +16,13 @@ using System.Windows.Forms;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Drawing;
+using System.Windows.Forms.Integration;
+using System.Windows.Controls;
+using ListViewItem = System.Windows.Forms.ListViewItem;
+using Control = System.Windows.Forms.Control;
+using System.Windows.Input;
+using MouseEventArgs = System.Windows.Forms.MouseEventArgs;
+using TabControl = System.Windows.Forms.TabControl;
 
 ///----------------------------------------------------------------------------
 /// This example plugin demonstrates
@@ -26,18 +33,235 @@ using System.Drawing;
 
 namespace OCalcProPlugin
 {
+    public class SimpleSpan : INotifyPropertyChanged
+    {
+        private string _name;
+        private string _type;
+        private double _length;
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        public string Name
+        {
+            get
+            {
+                return _name;
+            }
+            set
+            {
+                _name = value;
+                NotifyPropertyChanged();
+            }
+        }
+        public string Type
+        {
+            get
+            {
+                return _type;
+            }
+            set
+            {
+                _type = value;
+                NotifyPropertyChanged();
+            }
+        }
+        public double Length
+        {
+            get
+            {
+                return Math.Round(_length / 12, 2);
+            }
+            set
+            {
+                _length = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        private void NotifyPropertyChanged([CallerMemberName] String propertyName = "")
+        {
+            if (PropertyChanged != null)
+            {
+                PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
+    }
+    public class SimplePole : INotifyPropertyChanged
+    {
+        private string _poleNumber;
+        private double _poleLength;
+        private double _setDepth;
+        private double _difference;
+        private string _suggestedMRA;
+        private BindingList<SimpleSpan> _spans;
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        public string PoleNumber
+        {
+            get
+            {
+                return _poleNumber;
+            }
+            set
+            {
+                _poleNumber = value;
+                NotifyPropertyChanged();
+            }
+        }
+        public double PoleLength
+        {
+            get
+            {
+                return Math.Round(_poleLength / 12, 2);
+            }
+            set
+            {
+                _poleLength = value;
+                NotifyPropertyChanged();
+            }
+        }
+        public double SetDepth
+        {
+            get
+            {
+                return Math.Round(_setDepth / 12, 2);
+            }
+            set
+            {
+                _setDepth = value;
+                NotifyPropertyChanged();
+            }
+        }
+        public double Difference
+        {
+            get
+            {
+                return Math.Round(_difference, 2);
+            }
+            set
+            {
+                _difference = value;
+                NotifyPropertyChanged();
+            }
+        }
+        public string SuggestedMRA
+        {
+            get
+            {
+                return _suggestedMRA;
+            }
+            set
+            {
+                _suggestedMRA = value;
+                NotifyPropertyChanged();
+            }
+        }
+        public BindingList<SimpleSpan> Spans
+        {
+            get
+            {
+                return _spans;
+            }
+            set
+            {
+                _spans = value;
+                NotifyPropertyChanged();
+            }
+        }
+        private void NotifyPropertyChanged([CallerMemberName] String propertyName = "")
+        {
+            if (PropertyChanged != null)
+            {
+                PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
+    }
+    public static class SharedReferences
+    {
+        public static PPLMain cPPLMain { get; set; }
+        public static int cLineDesign { get; set; }
+        public static OV_Overlay.OverlayControl cOVOverlay { get; set; }
+        public static LCI_Lib.MakeReadyAssessment.MakeReadyAssesmentForm cMRA { get; set; }
+        public static PPL_ADGV.DataGridViewWithFilteringL<LCI_Lib.MakeReadyAssessment.MakeReadyAssessmentRecord> cADGV { get; set; }
+        public static SimplePole cMyPole { get; set; }
+        public static PPLCatalogManager.CatalogDefinition cUserCatalog { get; set; }
+        public static PPLCatalogManager.CatalogDefinition cMasterCatalog { get; set; }
+        public static PPL_LineDesign.PolesListView cPolesList { get; set; }
+        public static ToolStripMenuItem cfixedWind { get; set; }
+        public static ToolStripMenuItem cSortCheckHelper { get; set; }
+        public static ToolStripMenuItem cSingleSetElevation { get; set; }
+        public static ToolStripMenuItem cCheckedSetElevation { get; set; }
+        public static ToolStripMenuItem cAllSetElevation { get; set; }
+
+        public static void GetReferences()
+        {
+            cUserCatalog = cPPLMain.cCatalogManager.cCatalogs[0];
+            cMasterCatalog = cPPLMain.cCatalogManager.cCatalogs[1];
+
+            foreach (Form form in Application.OpenForms)
+            {
+                if (form.Text == "LCI")
+                {
+                    
+                }
+
+                // Charter RDOF LCI only
+                if (form.Text == "MRA")
+                {
+                    cMRA = (LCI_Lib.MakeReadyAssessment.MakeReadyAssesmentForm)form;
+
+                    cADGV = (PPL_ADGV.DataGridViewWithFilteringL<LCI_Lib.MakeReadyAssessment.MakeReadyAssessmentRecord>)form.Controls[1];
+                }
+
+                // OV Overlay Form
+                if (form.Text.Contains("OV Overlay"))
+                {
+                    cOVOverlay = (OV_Overlay.OverlayControl)form.Controls[0];
+
+                    cPolesList = cOVOverlay.cLD_MainForm.cPolesList;
+
+                    var lineDesignMenuStrip = cOVOverlay.cLD_MainForm.lineDesignMenuStrip;
+
+                    var calculateToolStipMenuItem = (ToolStripMenuItem)lineDesignMenuStrip.Items[10];
+
+                    var lineAnalysisToolStipMenuItem = (ToolStripMenuItem)calculateToolStipMenuItem.DropDownItems[2];
+
+                    var checkPolesOnlyToolStipMenuItem = (ToolStripMenuItem)lineAnalysisToolStipMenuItem.DropDownItems[1];
+
+                    cfixedWind = (ToolStripMenuItem)checkPolesOnlyToolStipMenuItem.DropDownItems[0];
+
+                    var polesMenustrip = cOVOverlay.cLD_MainForm.polesMenuStrip;
+
+                    var viewToolStripMenuItem = (ToolStripMenuItem)polesMenustrip.Items[2];
+
+                    cSortCheckHelper = (ToolStripMenuItem)viewToolStripMenuItem.DropDownItems[6];
+
+                    foreach (var item2 in cOVOverlay.Controls)
+                    {
+                        //Console.WriteLine(item2 + ", " + item2.GetType());
+
+                        if (item2.GetType() == typeof(MenuStrip))
+                        {
+                            var ovoverlayMenuStrip = (MenuStrip)item2;
+
+                            var toolsToolStripMenuItem = (ToolStripMenuItem)ovoverlayMenuStrip.Items[2];
+
+                            var setPoleElevationToolStripMenuItem = (ToolStripMenuItem)toolsToolStripMenuItem.DropDownItems[1];
+
+                            cSingleSetElevation = (ToolStripMenuItem)setPoleElevationToolStripMenuItem.DropDownItems[0];
+
+                            cCheckedSetElevation = (ToolStripMenuItem)setPoleElevationToolStripMenuItem.DropDownItems[1];
+
+                            cAllSetElevation = (ToolStripMenuItem)setPoleElevationToolStripMenuItem.DropDownItems[2];
+                        }
+                    }
+                }
+            }
+        }
+    }
     public class Plugin : PPLPluginInterface
     {
-        [DllImport("kernel32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        static extern bool AllocConsole();
-
-        /// <summary>
-        /// THis is the handle to the main O-Calc Pro component
-        /// </summary>
-        PPL_Lib.PPLMain cPPLMain = null;
-
-        /// <summary>
         /// Declare the type of plugin as one of:
         ///         DOCKED_TAB
         ///         MENU_ITEM
@@ -74,6 +298,10 @@ namespace OCalcProPlugin
             }
         }
 
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        static extern bool AllocConsole();
+
         /// <summary>
         /// Add a tabbed form to the tabbed window (if the plugin type is 
         /// PLUGIN_TYPE.DOCKED_TAB 
@@ -83,12 +311,16 @@ namespace OCalcProPlugin
         /// <param name="pPPLMain"></param>
         public void AddForm(PPL_Lib.PPLMain pPPLMain)
         {
-            cPPLMain = pPPLMain;
-            cForm = new PluginForm(pPPLMain);
-            Guid guid = new Guid(0x868e6fd5, 0x1d3, 0x4b44, 0xb0, 0x58, 0xfb, 0xbe, 0x98, 0x7a, 0xae, 0x94);
+            //AllocConsole();
+
+            SharedReferences.cPPLMain = pPPLMain;
+            SharedReferences.GetReferences();
+
+            cForm = new PluginForm();
+            Guid guid = new Guid(0x9eb1dc5c, 0xe2ca, 0x4a60, 0x88, 0x7e, 0xad, 0xb9, 0xa8, 0x77, 0x36, 0x2e);
             cForm.cGuid = guid;
-            cPPLMain.cDockedPanels.Add(cForm.cGuid.ToString(), cForm);
-            foreach (Control ctrl in cPPLMain.Controls)
+            SharedReferences.cPPLMain.cDockedPanels.Add(cForm.cGuid.ToString(), cForm);
+            foreach (Control ctrl in SharedReferences.cPPLMain.Controls)
             {
                 if (ctrl is WeifenLuo.WinFormsUI.Docking.DockPanel)
                 {
@@ -100,152 +332,6 @@ namespace OCalcProPlugin
 
         PluginForm cForm = null;
 
-        private class SimpleSpan : INotifyPropertyChanged
-        {
-            private string _name;
-            private string _type;
-            private double _length;
-
-            public event PropertyChangedEventHandler PropertyChanged;
-
-            public string Name
-            {
-                get
-                {
-                    return _name;
-                }
-                set
-                {
-                    _name = value;
-                    NotifyPropertyChanged();
-                }
-            }
-            public string Type 
-            {
-                get
-                {
-                    return _type;
-                }
-                set
-                {
-                    _type = value;
-                    NotifyPropertyChanged();
-                }
-            }
-            public double Length 
-            {
-                get
-                {
-                    return Math.Round(_length / 12, 2);
-                }
-                set
-                {
-                    _length = value;
-                    NotifyPropertyChanged();
-                }
-            }
-
-            private void NotifyPropertyChanged([CallerMemberName] String propertyName = "")
-            {
-                if (PropertyChanged != null)
-                {
-                    PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
-                }
-            }
-        }
-
-        private class SimplePole : INotifyPropertyChanged
-        {
-            private string _poleNumber;
-            private double _poleLength;
-            private double _setDepth;
-            private double _difference;
-            private BindingList<SimpleSpan> _spans;
-            private Color _mra;
-
-            public event PropertyChangedEventHandler PropertyChanged;
-
-            public string PoleNumber
-            {
-                get
-                {
-                    return _poleNumber;
-                }
-                set
-                {
-                    _poleNumber = value;
-                    NotifyPropertyChanged();
-                }
-            }
-            public double PoleLength
-            {
-                get
-                {
-                    return Math.Round(_poleLength / 12, 2);
-                }
-                set
-                {
-                    _poleLength = value;
-                    NotifyPropertyChanged();
-                }
-            }
-            public double SetDepth
-            {
-                get
-                {
-                    return Math.Round(_setDepth / 12, 2);
-                }
-                set
-                {
-                    _setDepth = value;
-                    NotifyPropertyChanged();
-                }
-            }
-            public double Difference
-            {
-                get
-                {
-                    return Math.Round(_difference, 2);
-                }
-                set
-                {
-                    _difference = value;
-                    NotifyPropertyChanged();
-                }
-            }
-            public BindingList<SimpleSpan> Spans
-            {
-                get
-                {
-                    return _spans;
-                }
-                set
-                {
-                    _spans = value;
-                    NotifyPropertyChanged();
-                }
-            }
-            public Color MRA
-            {
-                get
-                {
-                    return _mra;
-                }
-                set
-                {
-                    _mra = value;
-                    NotifyPropertyChanged();
-                }
-            }
-            private void NotifyPropertyChanged([CallerMemberName] String propertyName = "")
-            {
-                if (PropertyChanged != null)
-                {
-                    PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
-                }
-            }
-        }
-
         class PluginForm : WeifenLuo.WinFormsUI.Docking.DockContent
         {
             private DataGridView pole_dataGridView = new DataGridView();
@@ -254,17 +340,15 @@ namespace OCalcProPlugin
             private BindingSource pole_bindingSource = new BindingSource();
             private BindingSource spans_bindingSource = new BindingSource();
 
-            public PluginForm(PPL_Lib.PPLMain pPPLMain)
+            private int gSuggestedMRA;
+
+            public PluginForm()
             {
-                AllocConsole();
-
-                var cPPLMain = pPPLMain;
-
                 this.Name = "pluginForm";
                 this.Text = "MRA Colors";
 
-                var myPole = new SimplePole();
-                myPole.Spans = new BindingList<SimpleSpan>();
+                SharedReferences.cMyPole = new SimplePole();
+                SharedReferences.cMyPole.Spans = new BindingList<SimpleSpan>();
 
                 // spans_dataGridView initial setup
                 this.Controls.Add(spans_dataGridView);
@@ -276,8 +360,8 @@ namespace OCalcProPlugin
                 spans_dataGridView.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCellsExceptHeaders;
                 spans_dataGridView.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
                 spans_dataGridView.BorderStyle = BorderStyle.Fixed3D;
-                spans_dataGridView.AllowUserToResizeColumns = false;
-                spans_dataGridView.AllowUserToResizeRows = false;
+                spans_dataGridView.AllowUserToResizeColumns = true;
+                spans_dataGridView.AllowUserToResizeRows = true;
                 spans_dataGridView.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
 
                 spans_dataGridView.AutoGenerateColumns = true;
@@ -291,14 +375,14 @@ namespace OCalcProPlugin
                 pole_dataGridView.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
                 pole_dataGridView.BorderStyle = BorderStyle.Fixed3D;
                 pole_dataGridView.Size = new System.Drawing.Size(0, 44);
-                pole_dataGridView.AllowUserToResizeColumns = false;
-                pole_dataGridView.AllowUserToResizeRows = false;
+                pole_dataGridView.AllowUserToResizeColumns = true;
+                pole_dataGridView.AllowUserToResizeRows = true;
                 pole_dataGridView.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
 
                 pole_dataGridView.AutoGenerateColumns = true;
 
                 // pole_bindingSource do binding
-                pole_bindingSource.DataSource = myPole;
+                pole_bindingSource.DataSource = SharedReferences.cMyPole;
                 pole_dataGridView.DataSource = pole_bindingSource;
 
                 // More pole_dataGridView customizing
@@ -309,7 +393,7 @@ namespace OCalcProPlugin
                 pole_dataGridView.Columns["Difference"].HeaderText = "Difference ( ft. )";
 
                 // spans_bindingSource do binding
-                spans_bindingSource.DataSource = myPole.Spans;
+                spans_bindingSource.DataSource = SharedReferences.cMyPole.Spans;
                 spans_dataGridView.DataSource = spans_bindingSource;
 
                 // More spans_dataGridView customizing
@@ -320,6 +404,12 @@ namespace OCalcProPlugin
 
                 spans_dataGridView.Columns["Name"].HeaderText = "Spans";
 
+                var red = Color.PaleVioletRed;
+                var yellow = Color.PaleGoldenrod;
+                var green = Color.PaleGreen;
+
+                // Need to add an event on click of setdepth to substitute pole;
+
                 // Catch the pole_dataGridView.DataBindingComplete event
                 pole_dataGridView.DataBindingComplete += (object sender, DataGridViewBindingCompleteEventArgs e) =>
                 {
@@ -327,16 +417,16 @@ namespace OCalcProPlugin
                     {
                         if (Convert.ToDouble(pole_dataGridView.Rows[0].Cells["Difference"].Value) < 30)
                         {
-                            pole_dataGridView.Rows[0].Cells["Difference"].Style.BackColor = Color.PaleVioletRed;
+                            pole_dataGridView.Rows[0].Cells["Difference"].Style.BackColor = red;
                         }
                         else
                         {
-                            pole_dataGridView.Rows[0].Cells["Difference"].Style.BackColor = Color.PaleGreen;
+                            pole_dataGridView.Rows[0].Cells["Difference"].Style.BackColor = green;
                         }
 
                         if (Convert.ToDouble(pole_dataGridView.Rows[0].Cells["SetDepth"].Value) < 0)
                         {
-                            pole_dataGridView.Rows[0].Cells["SetDepth"].Style.BackColor = Color.PaleVioletRed;
+                            pole_dataGridView.Rows[0].Cells["SetDepth"].Style.BackColor = red;
                         }
                         else
                         {
@@ -354,42 +444,47 @@ namespace OCalcProPlugin
 
                     if (spanLength < 300)
                     {
-                        spans_dataGridView.Rows[e.RowIndex].Cells["Length"].Style.BackColor = Color.PaleGreen;
+                        spans_dataGridView.Rows[e.RowIndex].Cells["Length"].Style.BackColor = green;
                     }
 
                     if (spanLength >= 300 & spanLength < 350)
                     {
-                        spans_dataGridView.Rows[e.RowIndex].Cells["Length"].Style.BackColor = Color.PaleGoldenrod;
+                        spans_dataGridView.Rows[e.RowIndex].Cells["Length"].Style.BackColor = yellow;
                     }
 
                     if (spanLength >= 350)
                     {
-                        spans_dataGridView.Rows[e.RowIndex].Cells["Length"].Style.BackColor = Color.PaleVioletRed;
+                        spans_dataGridView.Rows[e.RowIndex].Cells["Length"].Style.BackColor = red;
                     }
                 };
 
-                cPPLMain.BeforeEvent += (object sender, PPL_Lib.PPLMain.EVENT_TYPE pEventType, ref bool pAbortEvent) =>
+                SharedReferences.cPPLMain.BeforeEvent += (object sender, PPL_Lib.PPLMain.EVENT_TYPE pEventType, ref bool pAbortEvent) =>
                 {
                     //Console.WriteLine("BeforeEvent: " + pEventType.ToString());
 
+                    if (pEventType == PPLMain.EVENT_TYPE.REBUILD_ALL_DISPLAYS)
+                    {
+                            SharedReferences.cPPLMain.c3DView.pole3Dview1.SignalCameraChanged();
+                    }
+
                     if (pEventType == PPLMain.EVENT_TYPE.REBUILD_3D)
                     {
-                        var pole = pPPLMain.GetPole();
+                        var cPole = SharedReferences.cPPLMain.GetPole();
 
-                        if (pole != null)
+                        if (cPole != null)
                         {
-                            myPole.Spans.Clear();
+                            SharedReferences.cMyPole.Spans.Clear();
 
-                            var elementList = pole.GetElementList();
+                            var elementList = cPole.GetElementList();
                             var elementListLength = elementList.Count;
 
-                            myPole.PoleNumber = pole.GetValueString("Pole Number");
-                            myPole.PoleLength = pole.GetValueDouble("LengthInInches");
-                            myPole.SetDepth = pole.GetValueDouble("BuryDepthInInches");
+                            SharedReferences.cMyPole.PoleNumber = cPole.GetValueString("Pole Number");
+                            SharedReferences.cMyPole.PoleLength = cPole.GetValueDouble("LengthInInches");
+                            SharedReferences.cMyPole.SetDepth = cPole.GetValueDouble("BuryDepthInInches");
 
-                            myPole.Difference = myPole.PoleLength - myPole.SetDepth;
+                            SharedReferences.cMyPole.Difference = SharedReferences.cMyPole.PoleLength - SharedReferences.cMyPole.SetDepth;
 
-                            foreach (var item in pole.GetElementList())
+                            foreach (var item in cPole.GetElementList())
                             {
                                 var itemType = item.GetSchemaKey();
 
@@ -400,39 +495,81 @@ namespace OCalcProPlugin
                                     span.Type = item.GetValueString("SpanType");
                                     span.Length = item.GetValueDouble("SpanDistanceInInches");
 
-                                    myPole.Spans.Add(span);
+                                    SharedReferences.cMyPole.Spans.Add(span);
                                 }
                             }
+
+                            gSuggestedMRA = 0;
+
+                            foreach (SimpleSpan span in SharedReferences.cMyPole.Spans)
+                            {
+                                if (span.Length < 300)
+                                {
+                                    var temp = 0;
+
+                                    if (gSuggestedMRA > temp)
+                                    {
+                                        // Do Nothing
+                                    } else
+                                    {
+                                        gSuggestedMRA = 0;
+                                    }
+                                }
+
+                                if (span.Length >= 300 & span.Length < 350)
+                                {
+                                    var temp = 1;
+
+                                    if (gSuggestedMRA > temp)
+                                    {
+                                        // Do Nothing
+                                    }
+                                    else
+                                    {
+                                        gSuggestedMRA = 1;
+                                    }
+                                }
+
+                                if (span.Length >= 350)
+                                {
+                                    var temp = 2;
+
+                                    if (gSuggestedMRA > temp)
+                                    {
+                                        // Do Nothing
+                                    }
+                                    else
+                                    {
+                                        gSuggestedMRA = 2;
+                                    }
+                                }
+                            }
+
+                            if (SharedReferences.cMyPole.Difference < 30)
+                            {
+                                gSuggestedMRA = 2;
+                            }
+
+                            if (gSuggestedMRA == 0)
+                            {
+                                SharedReferences.cMyPole.SuggestedMRA = "Green";
+                                pole_dataGridView.Rows[0].Cells["SuggestedMRA"].Style.BackColor = green;
+                            }
+
+                            if (gSuggestedMRA == 1)
+                            {
+                                SharedReferences.cMyPole.SuggestedMRA = "Yellow";
+                                pole_dataGridView.Rows[0].Cells["SuggestedMRA"].Style.BackColor = yellow;
+                            }
+
+                            if (gSuggestedMRA == 2)
+                            {
+                                SharedReferences.cMyPole.SuggestedMRA = "Red";
+                                pole_dataGridView.Rows[0].Cells["SuggestedMRA"].Style.BackColor = red;
+                            }
+
                         }
                     };
-
-                    if (pEventType == PPLMain.EVENT_TYPE.REBUILD_ALL_DISPLAYS)
-                    {
-                        //cPPLMain.c3DView.NeutralCameraPosition();
-                        //cPPLMain.c3DView.pole3Dview1.cCameraManager.UpdateCamera();
-
-                        //var pole = cPPLMain.GetPole();
-
-                        //var twod = cPPLMain.c2DView;
-                        //var threed = cPPLMain.c3DView;
-                        //var ALDE = cPPLMain.cActiveLineDesignElement;
-                        //var inv = cPPLMain.cInventory;
-                    }
-
-                    if (pEventType == PPLMain.EVENT_TYPE.LD_SELECT_POLE)
-                    {
-                        // Triggers on pole select in 3d view only.
-
-                        //cPPLMain.c3DView.NeutralCameraPosition();
-                        //cPPLMain.c3DView.ResetCameraPosition();
-
-                        //Console.WriteLine("LD_SELECTPOLE Is this enabled? Guess not.");
-                    }
-
-                    if (pEventType == PPLMain.EVENT_TYPE.SUBSTITUTION)
-                    {
-                        // TODO
-                    }
                 };
             }
 
@@ -443,55 +580,88 @@ namespace OCalcProPlugin
             }
         }
 
-        /// <summary>
-        /// Perform clearance analysis if type is PLUGIN_TYPE.CLEARANCE_SAG_PROVIDER
-        /// </summary>
-        /// <param name="pMain"></param>
-        /// <returns></returns>
         public PPLClearance.ClearanceSagProvider GetClearanceSagProvider(PPL_Lib.PPLMain pMain)
         {
             System.Diagnostics.Debug.Assert(Type == PLUGIN_TYPE.CLEARANCE_SAG_PROVIDER, Name + " is not a clearance provider plugin.");
             return null;
         }
 
-        //the toolstrip items we will add to O-Calc Pro
-        ToolStripMenuItem quickString_MenuItemButton = null;
-        ToolStripMenuItem checkAll_MenuItemButton = null;
-        ToolStripMenuItem fixedWind_MenuItemButton = null;
-        ToolStripMenuItem setElevation_MenuItemButton = null;
-        ToolStripMenuItem testing_MenuItemButton = null;
+        ToolStripMenuItem CreateMenuItemButton(string menuItemText, EventHandler handler)
+        {
+            var temp = new ToolStripMenuItem();
+
+            temp = new ToolStripMenuItem(menuItemText);
+            temp.AutoToolTip = true;
+            temp.ToolTipText = Description;
+            temp.Enabled = true;
+
+            temp.Click += handler;
+
+            return temp;
+        }
 
         public void AddToMenu(PPL_Lib.PPLMain pPPLMain, System.Windows.Forms.ToolStrip pToolStrip)
         {
-            //save the reference to the O-Calc Pro main
-            cPPLMain = pPPLMain;
+            var lineDesign_DropDown = new ToolStripMenuItem("Line Design");
+            var mra_DropDown = new ToolStripMenuItem("MRA");
+            var ovoverlay_DropDown = new ToolStripMenuItem("OV Overlay");
+            var measurement_Dropdown = new ToolStripMenuItem("LCI Measurement Tool");
 
-            //create the toolstrip buttons
-            quickString_MenuItemButton = new ToolStripMenuItem("Quick String");
-            quickString_MenuItemButton.AutoToolTip = true;
-            quickString_MenuItemButton.ToolTipText = Description;
-            quickString_MenuItemButton.Enabled = true;
+            var quickString_MenuItemButton = CreateMenuItemButton("Quick String", quickString_Click);
 
-            checkAll_MenuItemButton = new ToolStripMenuItem("Check All");
-            checkAll_MenuItemButton.AutoToolTip = true;
-            checkAll_MenuItemButton.ToolTipText = Description;
-            checkAll_MenuItemButton.Enabled = true;
+            var sortCheckHelper_MenuItemButton = CreateMenuItemButton("View, Sort / Check Helper", sortCheckHelper_Click);
 
-            fixedWind_MenuItemButton = new ToolStripMenuItem("Calculate Checked Fixed Wind");
-            fixedWind_MenuItemButton.AutoToolTip = true;
-            fixedWind_MenuItemButton.ToolTipText = Description;
-            fixedWind_MenuItemButton.Enabled = true;
+            var currentSetElevation_MenuItemButton = CreateMenuItemButton("Set Pole Elevation, Current", currentSetElevation_Click);
+            var checkedSetElevation_MenuItemButton = CreateMenuItemButton("Set Pole Elevation, Checked", checkedSetElevation_Click);
+            var allSetElevation_MenuItemButton = CreateMenuItemButton("Set Pole Elevation, All", allSetElevation_Click);
 
-            setElevation_MenuItemButton = new ToolStripMenuItem("Set Elevation");
-            setElevation_MenuItemButton.AutoToolTip = true;
-            setElevation_MenuItemButton.ToolTipText = Description;
-            setElevation_MenuItemButton.Enabled = true;
+            var combinedCheckAllFixedWind_MenuItemButton = CreateMenuItemButton("Combined Check All / Fixed Wind", combinedCheckAllFixedWind_Click);
 
-            testing_MenuItemButton = new ToolStripMenuItem("Testing");
-            testing_MenuItemButton.AutoToolTip = true;
-            testing_MenuItemButton.ToolTipText = Description;
-            testing_MenuItemButton.Enabled = false;
+            var setMRAUnset_MenuItemButton = CreateMenuItemButton("Set MRA to Unset", SetMRACell);
+            var setMRAGreen_MenuItemButton = CreateMenuItemButton("Set MRA to Green", SetMRACell);
+            var setMRAYellow_MenuItemButton = CreateMenuItemButton("Set MRA to Yellow", SetMRACell);
+            var setMRARed_MenuItemButton = CreateMenuItemButton("Set MRA to Red", SetMRACell);
+            var checkBackbone_MenuItemButton = CreateMenuItemButton("Check Backbone", SetMRACheckableCell);
+            var checkDoubleWood_MenuItemButton = CreateMenuItemButton("Check Double Wood", SetMRACheckableCell);
+            var checkSpanGuy_MenuItemButton = CreateMenuItemButton("Check Span Guy", SetMRACheckableCell);
+            var check3rdParty_MenuItemButton = CreateMenuItemButton("Check 3rd Party", SetMRACheckableCell);
+            var setMRASuggested_MenuItemButton = CreateMenuItemButton("Set MRA to Suggested", SetMRACell);
 
+            var firstPoint_MenuItemButton = CreateMenuItemButton("First Point", firstPoint_Click);
+            var secondPoint_MenuItemButton = CreateMenuItemButton("Second Point", secondPoint_Click);
+            var reset_MenuItemButton = CreateMenuItemButton("Reset", secondPoint_Click);
+
+            lineDesign_DropDown.DropDownItems.AddRange(new ToolStripItem[]
+            {
+                sortCheckHelper_MenuItemButton
+            });
+
+            mra_DropDown.DropDownItems.AddRange(new ToolStripItem[]
+            {
+                setMRAUnset_MenuItemButton,
+                setMRAGreen_MenuItemButton,
+                setMRAYellow_MenuItemButton,
+                setMRARed_MenuItemButton,
+                checkBackbone_MenuItemButton,
+                checkDoubleWood_MenuItemButton,
+                checkSpanGuy_MenuItemButton,
+                check3rdParty_MenuItemButton,
+                setMRASuggested_MenuItemButton
+            });
+
+            ovoverlay_DropDown.DropDownItems.AddRange(new ToolStripItem[]
+            {
+                currentSetElevation_MenuItemButton,
+                checkedSetElevation_MenuItemButton,
+                allSetElevation_MenuItemButton
+            });
+
+            measurement_Dropdown.DropDownItems.AddRange(new ToolStripItem[]
+            {
+                firstPoint_MenuItemButton,
+                secondPoint_MenuItemButton,
+                reset_MenuItemButton
+            });;
 
             //find the dropdown menu we want to add the toolstrip buttons to
             int itemindex = 0;
@@ -500,78 +670,21 @@ namespace OCalcProPlugin
             {
                 ToolStripDropDownButton tsb = pToolStrip.Items[itemindex] as ToolStripDropDownButton;
                 System.Diagnostics.Debug.Assert(tsb.Text == "&File");
+
+                tsb.DropDownItems.Insert(tsb.DropDownItems.Count - 1, lineDesign_DropDown);
+                tsb.DropDownItems.Insert(tsb.DropDownItems.Count - 1, mra_DropDown);
+                tsb.DropDownItems.Insert(tsb.DropDownItems.Count - 1, ovoverlay_DropDown);
+                //tsb.DropDownItems.Insert(tsb.DropDownItems.Count - 1, measurement_Dropdown);
+                tsb.DropDownItems.Insert(tsb.DropDownItems.Count - 1, new ToolStripSeparator());
                 tsb.DropDownItems.Insert(tsb.DropDownItems.Count - 1, quickString_MenuItemButton);
-                tsb.DropDownItems.Insert(tsb.DropDownItems.Count - 1, checkAll_MenuItemButton);
-                tsb.DropDownItems.Insert(tsb.DropDownItems.Count - 1, fixedWind_MenuItemButton);
-                tsb.DropDownItems.Insert(tsb.DropDownItems.Count - 1, setElevation_MenuItemButton);
+                tsb.DropDownItems.Insert(tsb.DropDownItems.Count - 1, combinedCheckAllFixedWind_MenuItemButton);
                 tsb.DropDownItems.Insert(tsb.DropDownItems.Count - 1, new ToolStripSeparator());
-                tsb.DropDownItems.Insert(tsb.DropDownItems.Count - 1, testing_MenuItemButton);
-                tsb.DropDownItems.Insert(tsb.DropDownItems.Count - 1, new ToolStripSeparator());
-            }
-
-            //add and event handler to detect the toolstrip button bein clicked by the user
-            quickString_MenuItemButton.Click += quickString_Click;
-            checkAll_MenuItemButton.Click += checkAll_Click;
-            fixedWind_MenuItemButton.Click += fixedWind_Click;
-            setElevation_MenuItemButton.Click += setElevation_Click;
-            testing_MenuItemButton.Click += testing_Click;
-        }
-
-        void quickString_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                var catalogs = cPPLMain.cCatalogManager.cCatalogs;
-
-                foreach (var catalog in catalogs)
-                {
-                    if (catalog.cName == "User")
-                    {
-                        var selected = catalog.cCatalog.GetSelectedElement();
-
-                        if (selected != null)
-                        {
-                            cPPLMain.cLineDesignInteraction.ApplyStringingAssembly(selected, true, new StringBuilder("Error"));
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message);
             }
         }
 
-        PPL_LineDesign.PolesListView cPolesList = null;
-        void checkAll_Click(object sender, EventArgs e)
+        private void CheckAll()
         {
-            foreach (Control control in cPPLMain.cLineDesignInteraction.GetLD_MainForm().Controls)
-            {
-                if (control.GetType().ToString().Contains("SplitContainer"))
-                {
-                    foreach (Control splitterPanel in control.Controls)
-                    {
-                        foreach (Control sub2Control in splitterPanel.Controls)
-                        {
-                            foreach (Control item in sub2Control.Controls)
-                            {
-                                foreach (Control item2 in item.Controls)
-                                {
-                                    foreach (Control item3 in item2.Controls)
-                                    {
-                                        if (item3.Name == "cPolesList")
-                                        {
-                                            cPolesList = (PPL_LineDesign.PolesListView)item3;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            foreach (ListViewItem item in cPolesList.Items)
+            foreach (ListViewItem item in SharedReferences.cPolesList.Items)
             {
                 if (item.Checked == false)
                 {
@@ -580,188 +693,185 @@ namespace OCalcProPlugin
             }
         }
 
-        private MenuStrip cLineDesignMenuStrip = null;
-        private ToolStripMenuItem cfixedWind = null;
-
-        void fixedWind_Click(object sender, EventArgs e)
+        private bool CheckReference(ToolStripMenuItem item)
         {
-            foreach (Control control in cPPLMain.cLineDesignInteraction.GetLD_MainForm().Controls)
+            var temp = false;
+
+            if (item != null)
+                temp = true;
+            else
             {
-                if (control.GetType().ToString().Contains("SplitContainer"))
-                {
-                    foreach (Control splitterPanel in control.Controls)
-                    {
-                        foreach (Control sub2Control in splitterPanel.Controls)
-                        {
-                            foreach (Control item in sub2Control.Controls)
-                            {
-                                if (item.Name == "lineDesignMenuStrip")
-                                {
-                                    cLineDesignMenuStrip = (MenuStrip)item;
-                                }
-                            }
-                        }
-                    }
-                }
+                SharedReferences.GetReferences();
+                temp = true;
             }
 
-
-            foreach (var item in cLineDesignMenuStrip.Items)
-            {
-                if (item.GetType().ToString() == "PPL_Lib.PPL_ToolStripMenuItem" && item.ToString() == "&Calculate")
-                {
-                    var newItem = (ToolStripMenuItem)item;
-
-                    foreach (var item2 in newItem.DropDownItems)
-                    {
-                        if (item2.ToString() == "Line Analysis")
-                        {
-                            var newItem2 = (ToolStripMenuItem)item2;
-
-                            foreach (var item3 in newItem2.DropDownItems)
-                            {
-                                if (item3.ToString() == "&Checked Poles Only")
-                                {
-                                    var newitem3 = (ToolStripMenuItem)item3;
-
-                                    foreach (var item4 in newitem3.DropDownItems)
-                                    {
-                                        if (item4.ToString() == "&Fixed Wind")
-                                        {
-                                            cfixedWind = (ToolStripMenuItem)item4;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            cfixedWind.PerformClick();
+            return temp;
         }
 
-        private ToolStripMenuItem cSingleSetElevation = null;
-        private ToolStripMenuItem cCheckedSetElevation = null;
-
-        void setElevation_Click(object sender, EventArgs e)
+        private void quickString_Click(object sender, EventArgs e)
         {
-            foreach (Form form in Application.OpenForms)
-            {
-                if (form.Text == "OV Overlay")
-                {
-                    foreach (var item in form.Controls)
-                    {
-                        var newItem = (OV_Overlay.OverlayControl)item;
+            var selected = SharedReferences.cUserCatalog.cCatalog.GetSelectedElement();
 
-                        foreach (var item2 in newItem.Controls)
-                        {
-                            if (item2.GetType().ToString().Contains("MenuStrip")) {
-                                var newItem2 = (MenuStrip)item2;
-
-                                foreach (var item3 in newItem2.Items)
-                                {
-                                    if (item3.GetType().ToString().Contains("ToolStripMenuItem"))
-                                    {
-                                        var newItem3 = (ToolStripMenuItem)item3;
-
-                                        foreach (var item4 in newItem3.DropDownItems)
-                                        {
-                                            Console.WriteLine($"{item4} {item4.GetType()}");
-
-                                            if (item4.ToString() == "Set Pole &Elevation")
-                                            {
-                                                var newItem4 = (ToolStripMenuItem)item4;
-
-                                                foreach (var item5 in newItem4.DropDownItems)
-                                                {
-                                                    Console.WriteLine($"{item5} {item5.GetType()}");
-
-                                                    if (item5.ToString() == "Current &Pole")
-                                                    {
-                                                        cSingleSetElevation = (ToolStripMenuItem)item5;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                        
-                                }
-                            }
-
-                        }
-                    }
-                }
-            }
-
-            cSingleSetElevation.PerformClick();
+            if (selected != null)
+                SharedReferences.cPPLMain.cLineDesignInteraction.ApplyStringingAssembly(selected, true, new StringBuilder("Error"));
         }
 
-        void testing_Click(object sender, EventArgs e)
+        private void sortCheckHelper_Click(object sender, EventArgs e)
         {
-            PPL_ADGV.DataGridViewWithFilteringL<LCI_Lib.MakeReadyAssessment.MakeReadyAssessmentRecord> mra_adgv = null;
+            CheckReference(SharedReferences.cSortCheckHelper);
+            SharedReferences.cSortCheckHelper.PerformClick();
+        }
 
-            foreach (Form form in Application.OpenForms)
+        private void currentSetElevation_Click(object sender, EventArgs e)
+        {
+            CheckReference(SharedReferences.cSingleSetElevation);
+
+            SharedReferences.cSingleSetElevation.PerformClick();
+
+        }
+
+        private void checkedSetElevation_Click(object sender, EventArgs e)
+        {
+            CheckReference(SharedReferences.cCheckedSetElevation);
+
+            SharedReferences.cCheckedSetElevation.PerformClick();
+
+        }
+
+        private void allSetElevation_Click(object sender, EventArgs e)
+        {
+            CheckReference(SharedReferences.cAllSetElevation);
+
+            SharedReferences.cAllSetElevation.PerformClick();
+
+        }
+
+        private void combinedCheckAllFixedWind_Click(object sender, EventArgs e)
+        {
+            CheckReference(SharedReferences.cAllSetElevation);
+
+            CheckAll();
+
+            SharedReferences.cfixedWind.PerformClick();
+        }
+
+        private void SetMRACell(object sender, EventArgs e)
+        {
+            if (SharedReferences.cADGV != null)
             {
-                if (form.Text == "MRA")
+                for (int i = 0; i < SharedReferences.cADGV.Rows.Count; i++)
                 {
-                    foreach (Control control in form.Controls)
+                    if (SharedReferences.cADGV.Rows[i].Cells["PLDBID"].Value.ToString() == SharedReferences.cPPLMain.GetPole().GetValueString("Pole Number"))
                     {
+                        var temp = sender.ToString();
 
-                        Console.WriteLine($"Control Count: {control.Controls.Count}\tType: {control.GetType()}\tName: {control.Name}\tText: {control.Text}");
-
-                        if (control.GetType().ToString().Contains("DataGridViewWithFilteringL"))
+                        if (temp == "Set MRA to Unset")
                         {
-                            Console.WriteLine("Casting the control to a custom datagridview");
+                            SharedReferences.cADGV.Rows[i].Cells["MRA"].Value = "Unset";
+                        }
 
-                            try
+                        if (temp == "Set MRA to Green")
+                        {
+                            SharedReferences.cADGV.Rows[i].Cells["MRA"].Value = "Green";
+                        }
+
+                        if (temp == "Set MRA to Yellow")
+                        {
+                            SharedReferences.cADGV.Rows[i].Cells["MRA"].Value = "Yellow";
+                        }
+
+                        if (temp == "Set MRA to Red")
+                        {
+                            SharedReferences.cADGV.Rows[i].Cells["MRA"].Value = "Red";
+                        }
+
+                        if (temp == "Set MRA to Suggested")
+                        {
+                            SharedReferences.cADGV.Rows[i].Cells["MRA"].Value = SharedReferences.cMyPole.SuggestedMRA;
+                        }
+                    }
+                }
+            }
+        }
+
+        private void SetMRACheckableCell(Object sender, EventArgs e)
+        {
+            if (SharedReferences.cADGV != null)
+            {
+                for (int i = 0; i < SharedReferences.cADGV.Rows.Count; i++)
+                {
+                    if (SharedReferences.cADGV.Rows[i].Cells["PLDBID"].Value.ToString() == SharedReferences.cPPLMain.GetPole().GetValueString("Pole Number"))
+                    {
+                        var temp = sender.ToString();
+
+                        if (temp == "Check Backbone")
+                        {
+                            var backbone = (DataGridViewCheckBoxCell)SharedReferences.cADGV.Rows[i].Cells["Bkbn"];
+
+                            if (backbone.Value is true)
                             {
-                                mra_adgv = (PPL_ADGV.DataGridViewWithFilteringL<LCI_Lib.MakeReadyAssessment.MakeReadyAssessmentRecord>)control;
+                                backbone.Value = false;
                             }
-                            catch (Exception ex)
+                            else
                             {
-                                Console.WriteLine(ex.Message);
+                                backbone.Value = true;
                             }
+                        }
 
-                            if (mra_adgv != null)
+                        if (temp == "Check Double Wood")
+                        {
+                            var doubleWood = (DataGridViewCheckBoxCell)SharedReferences.cADGV.Rows[i].Cells["DubWood"];
+
+                            if (doubleWood.Value is true)
                             {
-                                for (int i = 0; i <= mra_adgv.Rows.Count; i++)
-                                {
-                                    Console.WriteLine(mra_adgv.Rows[i].Cells["PLDBID"].Value.ToString());
-                                    Console.WriteLine(cPPLMain.GetPole().GetValueString("Pole Number"));
+                                doubleWood.Value = false;
+                            }
+                            else
+                            {
+                                doubleWood.Value = true;
+                            }
+                        }
 
-                                    if (mra_adgv.Rows[i].Cells["PLDBID"].Value.ToString() == cPPLMain.GetPole().GetValueString("Pole Number"))
-                                    {
-                                        Console.WriteLine("PLDBID & POle Number match");
+                        if (temp == "Check Span Guy")
+                        {
+                            var spanGuy = (DataGridViewCheckBoxCell)SharedReferences.cADGV.Rows[i].Cells["SpanGuy"];
 
-                                        //var color = mra_adgv.Rows[i].Cells["MRA"].Value.ToString();
+                            if (spanGuy.Value is true)
+                            {
+                                spanGuy.Value = false;
+                            }
+                            else
+                            {
+                                spanGuy.Value = true;
+                            }
+                        }
 
-                                        //if (color == "Unset")
-                                        //{
-                                        //    myPole.MRA = Color.Gray;
-                                        //}
+                        if (temp == "Check 3rd Party")
+                        {
+                            var thirdParty = (DataGridViewCheckBoxCell)SharedReferences.cADGV.Rows[i].Cells["Col3dPty"];
 
-                                        //if (color == "Green")
-                                        //{
-                                        //    myPole.MRA = Color.PaleGreen;
-                                        //}
-
-                                        //if (color == "Yellow")
-                                        //{
-                                        //    myPole.MRA = Color.PaleGoldenrod;
-                                        //}
-
-                                        //if (color == "Red")
-                                        //{
-                                        //    myPole.MRA = Color.PaleVioletRed;
-                                        //}
-                                    }
-                                }
+                            if (thirdParty.Value is true)
+                            {
+                                thirdParty.Value = false;
+                            }
+                            else
+                            {
+                                thirdParty.Value = true;
                             }
                         }
                     }
                 }
             }
+        }
+
+        private void firstPoint_Click(object sender, EventArgs e)
+        {
+            
+        }
+
+        private void secondPoint_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }
